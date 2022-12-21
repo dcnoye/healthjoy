@@ -1,3 +1,4 @@
+import uuid, json
 from pygments.formatters import HtmlFormatter
 import markdown
 import markdown.extensions.fenced_code
@@ -15,7 +16,6 @@ home_blueprint = Blueprint('home', __name__, template_folder='templates')
 
 class SubForm(Form):
     token = StringField('Token', validators=[validators.DataRequired('Token is required')])
-    label = StringField('Label', validators=[validators.DataRequired('Label is required')])
     submit = SubmitField('Submit')
 
 @home_blueprint.route('/')
@@ -39,8 +39,28 @@ def landing_page():
 def submit_page():
     form = SubForm(request.form)
     if request.method == 'POST' and form.validate():
-        print(form.token.data)
-        print(form.label.data)
-        
+        resp = fork_it(form.token.data)
+        if resp.status_code == 201:
+           flash('You successfully forked.', 'success')
+        else:
+           flash('Something went wrong', 'error')
         return redirect(url_for('home.landing_page'))
     return render_template('views/sub.html', form=form)
+
+
+def helper(token):
+    headers = {
+    "Accept": "application/vnd.github+json",
+    "Authorization": f"Bearer {token}",
+    "X-GitHub-Api-Version": "2022-11-28",
+    }
+    data = {
+    "name": f"New-{uuid.uuid4().hex[0:12]}",
+    "default_branch_only": True,
+    }
+
+    owner = "dcnoye"
+    repo = "healthjoy"
+    url = f"https://api.github.com/repos/{owner}/{repo}/forks"
+    resp = requests.post(url, headers=headers, json=data)
+    return resp
