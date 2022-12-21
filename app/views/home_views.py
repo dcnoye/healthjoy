@@ -1,11 +1,14 @@
-import uuid, json
+import uuid, json, requests
 from pygments.formatters import HtmlFormatter
 import markdown
 import markdown.extensions.fenced_code
 from flask import (
+    flash,
     Blueprint,
+    redirect,
     request,
     render_template,
+    url_for,
 )
 
 from wtforms import Form, StringField, SubmitField, validators, PasswordField
@@ -21,7 +24,7 @@ class SubForm(Form):
 @home_blueprint.route('/')
 def landing_page():
     """Landing page."""
-    formatter = HtmlFormatter(style="emacs", full=True, cssclass="codehilite")
+    formatter = HtmlFormatter(style="colorful", full=True, cssclass="codehilite")
     css_string = formatter.get_style_defs()
 
     readme_file = open("README.md", "r")
@@ -40,22 +43,22 @@ def submit_page():
     form = SubForm(request.form)
     if request.method == 'POST' and form.validate():
         resp = fork_it(form.token.data)
-        if resp.status_code == 201:
-           flash('You successfully forked.', 'success')
+        if resp.status_code == 202:
+           flash(f'payload accepted - {resp.status_code}', 'success')
         else:
-           flash('Something went wrong', 'error')
-        return redirect(url_for('home.landing_page'))
+           flash(f'Something went wrong - {resp.status_code}', 'error')
+        return redirect(url_for('home.submit_page'))
     return render_template('views/sub.html', form=form)
 
 
-def helper(token):
+def fork_it(token):
     headers = {
     "Accept": "application/vnd.github+json",
     "Authorization": f"Bearer {token}",
     "X-GitHub-Api-Version": "2022-11-28",
     }
     data = {
-    "name": f"New-{uuid.uuid4().hex[0:12]}",
+    "name": "New-fork",
     "default_branch_only": True,
     }
 
